@@ -5,8 +5,6 @@ import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.MotionEvent;
-import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -15,12 +13,16 @@ import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by YK on 2016/6/2.
  */
-public class PictureDisplayView extends ScrollView implements View.OnTouchListener{
+public class PictureDisplayView extends ScrollView {
 
     private String TAG = "PictureDisplayView";
+    private final static int URL = 1,BOTTOM = 2,TOP = 3;
     private LinearLayout firstLayout,secondLayout;
     private Context mContext;
 
@@ -34,6 +36,8 @@ public class PictureDisplayView extends ScrollView implements View.OnTouchListen
     private ImageLoader imageLoader;
     private DisplayImageOptions mOptions;
 
+    private List<ImageView> imageViewList = new ArrayList<ImageView>();
+    private List<ImageView> recycleList = new ArrayList<ImageView>();
     public PictureDisplayView(Context context) {
 
         super(context);
@@ -54,12 +58,33 @@ public class PictureDisplayView extends ScrollView implements View.OnTouchListen
         ImageLoader.getInstance().init(configuration);
         imageLoader = ImageLoader.getInstance();
 
+
         mOptions=new DisplayImageOptions.Builder()
                 .showImageOnLoading(R.mipmap.ic_launcher)
                 .showImageOnFail(R.mipmap.ic_launcher)
                 .cacheInMemory(true)
                 .cacheOnDisk(true)
+
                 .build();
+    }
+
+
+    @Override
+    protected void onScrollChanged(int l, int t, int oldl, int oldt) {
+        super.onScrollChanged(l, t, oldl, oldt);
+        checkRecycle();
+
+    }
+
+    private void checkRecycle(){
+        for(int i = 0;i<imageViewList.size();i++){
+            ImageView imageView = imageViewList.get(i);
+            int top = (int) imageView.getTag(R.string.top);
+            int bottom = (int) imageView.getTag(R.string.buttom);
+            if(bottom > getScrollY()){
+
+            }
+        }
     }
 
     @Override
@@ -94,10 +119,7 @@ public class PictureDisplayView extends ScrollView implements View.OnTouchListen
         }
     }
 
-    @Override
-    public boolean onTouch(View v, MotionEvent event) {
-        return false;
-    }
+
 
     class LoadPicTask extends AsyncTask<String,Integer,Bitmap> {
 
@@ -114,13 +136,13 @@ public class PictureDisplayView extends ScrollView implements View.OnTouchListen
         @Override
         protected Bitmap doInBackground(String... params) {
             mPicUrl = params[0];
-            Bitmap picBitmap = imageLoader.getMemoryCache().get(mPicUrl);
+            Bitmap picBitmap = imageLoader.loadImageSync(mPicUrl, mOptions);//imageLoader.getMemoryCache().get(mPicUrl);
             if(picBitmap ==null){
                 //picBitmap = imageLoader.getDiskCache().get(mPicUrl);
-                 picBitmap = imageLoader.loadImageSync(mPicUrl, mOptions);
+                 //picBitmap = imageLoader.loadImageSync(mPicUrl, mOptions);
 
             }
-            Log.d(TAG,picBitmap.toString());
+            //Log.d(TAG,picBitmap.toString());
             Log.d(TAG,"loading");
             return picBitmap;
         }
@@ -150,18 +172,24 @@ public class PictureDisplayView extends ScrollView implements View.OnTouchListen
                 imageView.setImageBitmap(bitmap);
 
                 imageView.setPadding(5, 5, 5, 5);
-                findColumn(imageHeight).addView(imageView);
+                imageView.setTag(R.string.url,mPicUrl);
+                findColumn(imageView, imageHeight).addView(imageView);
+                imageViewList.add(imageView);
             }
         }
     }
 
-    private LinearLayout findColumn(int imageHeight){
+    private LinearLayout findColumn(ImageView imageView,int imageHeight){
         if(mFirstHeight<=mSecondHeight){
+            imageView.setTag(R.string.top,mFirstHeight);
             mFirstHeight += imageHeight;
+            imageView.setTag(R.string.buttom,mFirstHeight);
             return firstLayout;
         }
         else {
+            imageView.setTag(R.string.top,mSecondHeight);
             mSecondHeight += imageHeight;
+            imageView.setTag(R.string.buttom,mSecondHeight);
             return secondLayout;
         }
     }

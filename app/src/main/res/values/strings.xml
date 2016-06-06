@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">PictureDisplayDemo</string>
+    <string name="url">url</string>
+    <string name="top">top</string>
+    <string name="buttom">buttom</string>
 </resources>
