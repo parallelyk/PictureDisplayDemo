@@ -3,8 +3,12 @@ package com.parallelyk.picturedisplaydemo;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Message;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.MotionEvent;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -19,10 +23,10 @@ import java.util.List;
 /**
  * Created by YK on 2016/6/2.
  */
-public class PictureDisplayView extends ScrollView {
+public class PictureDisplayView extends ScrollView  implements View.OnTouchListener{
 
     private String TAG = "PictureDisplayView";
-    private final static int URL = 1,BOTTOM = 2,TOP = 3;
+
     private LinearLayout firstLayout,secondLayout;
     private Context mContext;
 
@@ -31,6 +35,7 @@ public class PictureDisplayView extends ScrollView {
     private int mColumnWidth;
     private int mCurrentPage;
     private int mFirstHeight = 0,mSecondHeight = 0;
+    private int mScrollViewHeight;
 
 
     private ImageLoader imageLoader;
@@ -38,6 +43,13 @@ public class PictureDisplayView extends ScrollView {
 
     private List<ImageView> imageViewList = new ArrayList<ImageView>();
     private List<ImageView> recycleList = new ArrayList<ImageView>();
+
+    private static Handler mHandler= new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+        }
+    };
     public PictureDisplayView(Context context) {
 
         super(context);
@@ -76,12 +88,28 @@ public class PictureDisplayView extends ScrollView {
 
     }
 
+    /**
+     * 重复利用imageview
+     */
     private void checkRecycle(){
         for(int i = 0;i<imageViewList.size();i++){
             ImageView imageView = imageViewList.get(i);
             int top = (int) imageView.getTag(R.string.top);
             int bottom = (int) imageView.getTag(R.string.buttom);
-            if(bottom > getScrollY()){
+            if(bottom < getScrollY() || top >getScrollY()+mScrollViewHeight){//移出屏幕了
+                imageView.setImageResource(R.mipmap.ic_launcher);
+            }
+            else{
+                String url = (String) imageView.getTag(R.string.url);
+                Bitmap bitmap = imageLoader.getMemoryCache().get(url);
+                if(bitmap != null){
+                    imageView.setImageBitmap(bitmap);
+                }
+                else {
+                    LoadPicTask task = new LoadPicTask(imageView);
+                    task.execute(url);
+                }
+
 
             }
         }
@@ -91,7 +119,7 @@ public class PictureDisplayView extends ScrollView {
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
         if (changed && !loadOnce) {
-            //scrollViewHeight = getHeight();
+            mScrollViewHeight = getHeight();
             //scrollLayout = getChildAt(0);
             firstLayout = (LinearLayout) findViewById(R.id.first_column);
             secondLayout = (LinearLayout) findViewById(R.id.second_column);
@@ -119,6 +147,15 @@ public class PictureDisplayView extends ScrollView {
         }
     }
 
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_UP) {
+            Message message = new Message();
+            message.obj = this;
+            mHandler.sendMessageDelayed(message, 5);
+        }
+        return false;
+    }
 
 
     class LoadPicTask extends AsyncTask<String,Integer,Bitmap> {
