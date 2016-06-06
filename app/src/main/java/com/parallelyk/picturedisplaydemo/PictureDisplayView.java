@@ -4,6 +4,9 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.util.AttributeSet;
+import android.util.Log;
+import android.view.MotionEvent;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -11,19 +14,22 @@ import android.widget.ScrollView;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
-import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 
 /**
  * Created by YK on 2016/6/2.
  */
-public class PictureDisplayView extends ScrollView{
+public class PictureDisplayView extends ScrollView implements View.OnTouchListener{
 
+    private String TAG = "PictureDisplayView";
     private LinearLayout firstLayout,secondLayout;
     private Context mContext;
 
 
-    private boolean loadOnce;
+    private boolean loadOnce =false;
     private int mColumnWidth;
+    private int mCurrentPage;
+    private int mFirstHeight = 0,mSecondHeight = 0;
+
 
     private ImageLoader imageLoader;
     private DisplayImageOptions mOptions;
@@ -73,6 +79,24 @@ public class PictureDisplayView extends ScrollView{
 
     private void loadMoreImages(){
 
+        int start = mCurrentPage*10;
+        int end = mCurrentPage*10+10;
+        if(start<ImageUrl.imageUrls.length){
+            if(end>ImageUrl.imageUrls.length){
+                end = ImageUrl.imageUrls.length;
+            }
+            for(int i = start;i<end;i++){
+                LoadPicTask task = new LoadPicTask();
+                task.execute(ImageUrl.imageUrls[i]);
+
+            }
+            mCurrentPage++;
+        }
+    }
+
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        return false;
     }
 
     class LoadPicTask extends AsyncTask<String,Integer,Bitmap> {
@@ -92,10 +116,12 @@ public class PictureDisplayView extends ScrollView{
             mPicUrl = params[0];
             Bitmap picBitmap = imageLoader.getMemoryCache().get(mPicUrl);
             if(picBitmap ==null){
-
-                imageLoader.loadImage(mPicUrl, mOptions, new SimpleImageLoadingListener());
+                //picBitmap = imageLoader.getDiskCache().get(mPicUrl);
+                 picBitmap = imageLoader.loadImageSync(mPicUrl, mOptions);
 
             }
+            Log.d(TAG,picBitmap.toString());
+            Log.d(TAG,"loading");
             return picBitmap;
         }
 
@@ -113,7 +139,30 @@ public class PictureDisplayView extends ScrollView{
         }
 
         private void addImage(Bitmap bitmap, int imageWidth, int imageHeight){
+            if(imageView!=null){
+                imageView.setImageBitmap(bitmap);
+            }
+            else {
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                        imageWidth, imageHeight);
+                imageView = new ImageView(getContext());
+                imageView.setLayoutParams(params);
+                imageView.setImageBitmap(bitmap);
 
+                imageView.setPadding(5, 5, 5, 5);
+                findColumn(imageHeight).addView(imageView);
+            }
+        }
+    }
+
+    private LinearLayout findColumn(int imageHeight){
+        if(mFirstHeight<=mSecondHeight){
+            mFirstHeight += imageHeight;
+            return firstLayout;
+        }
+        else {
+            mSecondHeight += imageHeight;
+            return secondLayout;
         }
     }
 }
