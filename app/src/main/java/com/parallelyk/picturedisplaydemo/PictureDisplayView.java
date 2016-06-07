@@ -76,7 +76,6 @@ public class PictureDisplayView extends ScrollView  implements View.OnTouchListe
                 .showImageOnFail(R.mipmap.ic_launcher)
                 .cacheInMemory(true)
                 .cacheOnDisk(true)
-
                 .build();
     }
 
