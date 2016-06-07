@@ -1,5 +1,6 @@
 package com.parallelyk.picturedisplaydemo;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
@@ -12,20 +13,23 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Toast;
 
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by YK on 2016/6/2.
  */
 public class PictureDisplayView extends ScrollView  implements View.OnTouchListener{
 
-    private String TAG = "PictureDisplayView";
+    private static final String TAG = "PictureDisplayView";
 
     private LinearLayout firstLayout,secondLayout;
     private Context mContext;
@@ -35,19 +39,39 @@ public class PictureDisplayView extends ScrollView  implements View.OnTouchListe
     private int mColumnWidth;
     private int mCurrentPage;
     private int mFirstHeight = 0,mSecondHeight = 0;
-    private int mScrollViewHeight;
-
-
+    private static int mScrollViewHeight;
+    private static int lastScrollY;
+    private static Set<LoadPicTask> taskCollection;
+    private static View scrollLayout;
     private ImageLoader imageLoader;
     private DisplayImageOptions mOptions;
 
     private List<ImageView> imageViewList = new ArrayList<ImageView>();
     private List<ImageView> recycleList = new ArrayList<ImageView>();
 
-    private static Handler mHandler= new Handler(){
+     @SuppressLint("HandlerLeak")
+     static Handler mHandler= new Handler(){
         @Override
         public void handleMessage(Message msg) {
-            super.handleMessage(msg);
+            PictureDisplayView myScrollView = (PictureDisplayView) msg.obj;
+            int scrollY = myScrollView.getScrollY();
+            Log.d(TAG,scrollY+"++"+lastScrollY);
+            if (scrollY == lastScrollY) {
+                Log.d(TAG,"======");
+
+                if (mScrollViewHeight + scrollY >= scrollLayout.getHeight()
+                        && taskCollection.isEmpty() ) {
+                    Log.d(TAG,"loadmore");
+                    myScrollView.loadMoreImages();
+                }
+                myScrollView.checkRecycle();
+            } else {
+                lastScrollY = scrollY;
+                Message message = Message.obtain();
+                message.obj = myScrollView;
+                // 5毫秒后再次对滚动位置进行判断
+                mHandler.sendMessageDelayed(message, 5);
+            }
         }
     };
     public PictureDisplayView(Context context) {
@@ -69,8 +93,8 @@ public class PictureDisplayView extends ScrollView  implements View.OnTouchListe
         ImageLoaderConfiguration configuration=ImageLoaderConfiguration.createDefault(mContext);
         ImageLoader.getInstance().init(configuration);
         imageLoader = ImageLoader.getInstance();
-
-
+        taskCollection = new HashSet<LoadPicTask>();
+        setOnTouchListener(this);
         mOptions=new DisplayImageOptions.Builder()
                 .showImageOnLoading(R.mipmap.ic_launcher)
                 .showImageOnFail(R.mipmap.ic_launcher)
@@ -107,6 +131,7 @@ public class PictureDisplayView extends ScrollView  implements View.OnTouchListe
                 else {
                     LoadPicTask task = new LoadPicTask(imageView);
                     task.execute(url);
+                    taskCollection.add(task);
                 }
 
 
@@ -119,7 +144,7 @@ public class PictureDisplayView extends ScrollView  implements View.OnTouchListe
         super.onLayout(changed, l, t, r, b);
         if (changed && !loadOnce) {
             mScrollViewHeight = getHeight();
-            //scrollLayout = getChildAt(0);
+            scrollLayout = getChildAt(0);
             firstLayout = (LinearLayout) findViewById(R.id.first_column);
             secondLayout = (LinearLayout) findViewById(R.id.second_column);
             //thirdColumn = (LinearLayout) findViewById(R.id.third_column);
@@ -152,6 +177,7 @@ public class PictureDisplayView extends ScrollView  implements View.OnTouchListe
             Message message = new Message();
             message.obj = this;
             mHandler.sendMessageDelayed(message, 5);
+            Log.d(TAG, "send");
         }
         return false;
     }
@@ -194,6 +220,7 @@ public class PictureDisplayView extends ScrollView  implements View.OnTouchListe
                 int scaledHeight = (int) (bitmap.getHeight() / ratio);
                 addImage(bitmap, mColumnWidth, scaledHeight);
             }
+            taskCollection.remove(this);
         }
 
         private void addImage(Bitmap bitmap, int imageWidth, int imageHeight){
@@ -212,6 +239,12 @@ public class PictureDisplayView extends ScrollView  implements View.OnTouchListe
                 findColumn(imageView, imageHeight).addView(imageView);
                 imageViewList.add(imageView);
             }
+            imageView.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Toast.makeText(mContext,"hello",Toast.LENGTH_SHORT).show();
+                }
+            });
         }
     }
 
