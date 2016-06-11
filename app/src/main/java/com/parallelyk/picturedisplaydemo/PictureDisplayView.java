@@ -2,6 +2,7 @@ package com.parallelyk.picturedisplaydemo;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Handler;
@@ -13,7 +14,6 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
-import android.widget.Toast;
 
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
@@ -242,7 +242,9 @@ public class PictureDisplayView extends ScrollView  implements View.OnTouchListe
             imageView.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Toast.makeText(mContext,"hello",Toast.LENGTH_SHORT).show();
+                    Intent  intent = new Intent(mContext,DetailImageActivity.class);
+                    intent.putExtra("url",mPicUrl);
+                    mContext.startActivity(intent);
                 }
             });
         }
